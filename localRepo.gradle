@@ -1,0 +1,97 @@
+project.apply plugin:'maven-publish'
+
+project.publishing {
+	repositories {
+		maven {
+			name 'project'
+			url "file://${project.rootDir}/repository"
+		}
+	}
+}
+
+def removeZeroSizeSubdirs(File parent){
+	parent.eachDir{dir->
+		if(dir.directorySize()==0 || isEmptyArtifactDirectory(dir)){
+			println "removing dir $dir"
+			dir.deleteDir()
+			}
+		else
+			removeZeroSizeSubdirs(dir)
+	}
+	if(parent.list().size()==0){
+		println "removing dir $parent"
+		parent.deleteDir()
+	}
+}
+
+def isEmptyArtifactDirectory(dir){
+	def mavenFiles=['maven-metadata.xml.sha1', 'maven-metadata.xml', 'maven-metadata.xml.md5']
+	def all=dir.listFiles().collect{it.name}
+	all.containsAll(mavenFiles) && all.size()==mavenFiles.size()
+}
+
+
+
+def purgeProjectRepo (path) {
+	File root=file(path)
+	removeZeroSizeSubdirs(root)
+}
+
+task removeAllFromProjectRepository << {
+	def artifact=System.properties['artifact']
+	
+	assert artifact: "please specifiy system property -artifact=..."
+	def group=System.properties['group']?:artifact
+	
+	project.delete "${project.rootDir}/repository/${group.replaceAll('\\.','/')}/$artifact"
+	
+	purgeProjectRepo("${project.rootDir}/repository")
+
+}
+
+task removeFromProjectRepository << {
+	def artifact=System.properties['artifact']
+	def version=System.properties['version']
+	
+	assert artifact: "please specifiy system property -artifact=..."
+	assert version: "please specifiy system property -Dversion=..."
+	def group=System.properties['artifact']?:artifact
+
+		
+	project.delete "${project.rootDir}/repository/$group/$artifact/$version"
+}
+
+task publishToLocalProjectRepository  {
+	
+	if(System.properties['file']){
+		assert project.file(System.properties['file']).isFile(): "${System.properties['file']} not a valid file"
+		
+		project.mkdir("${project.rootDir}/repository")
+
+		def regex=/(.*?)-?([0-9.]*).jar$/
+
+		File file=new File(System.properties['file'])
+
+
+		def matcher= (file.name =~ regex)
+		def strArtifactId = matcher[0][1]
+		def strVersion = matcher[0][2]
+		
+		assert strVersion  || System.properties['version']: "cannot infer version from ${file.name}, please specify -Dversion=... on command line"
+
+		project.publishing.
+				publications.create('proprietary', MavenPublication) {
+
+			groupId System.properties['group'] ?: strArtifactId
+			artifactId strArtifactId
+			artifact System.properties['file']
+			version System.properties['version'] ?: strVersion
+		}
+		
+		defaultTasks 'publishProprietaryPublicationToProjectRepository'
+
+	}
+	
+
+}
+
