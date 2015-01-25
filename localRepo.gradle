@@ -1,4 +1,14 @@
-project.apply plugin:'maven-publish'
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'de.undercouch:gradle-download-task:1.2'
+    }
+}
+
+apply plugin: 'de.undercouch.download'
+apply plugin:'maven-publish'
 
 project.publishing {
 	repositories {
@@ -61,16 +71,34 @@ task removeFromProjectRepository << {
 	project.delete "${project.rootDir}/repository/$group/$artifact/$version"
 }
 
+def getFile(url){
+	if (url.startsWith('http')){
+		project.mkdir "${project.buildDir}/download"
+		project.download {
+			src url
+			dest "${project.buildDir}/download"
+		}
+
+ 		"$project.buildDir/download/${url.substring( url.lastIndexOf('/')+1, url.length() )}"
+	}
+	else
+		url
+}
+
+
 task publishToLocalProjectRepository  {
 	
 	if(System.properties['file']){
-		assert project.file(System.properties['file']).isFile(): "${System.properties['file']} not a valid file"
+	
+		def fileName=getFile(System.properties['file'])
+	
+		assert project.file(fileName).isFile(): "$fileName not a valid file"
 		
 		project.mkdir("${project.rootDir}/repository")
 
 		def regex=/(.*?)-?([0-9.]*).jar$/
 
-		File file=new File(System.properties['file'])
+		File file=new File(fileName)
 
 
 		def matcher= (file.name =~ regex)
@@ -84,7 +112,7 @@ task publishToLocalProjectRepository  {
 
 			groupId System.properties['group'] ?: strArtifactId
 			artifactId strArtifactId
-			artifact System.properties['file']
+			artifact fileName
 			version System.properties['version'] ?: strVersion
 		}
 		
