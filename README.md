@@ -1,5 +1,11 @@
 gradle-utils
 ============
+
+Some utility gradle scripts
+
+localRepo.gradle
+----------------
+
 This is a utilily gradle script to publish a single jar into a "repository" directory inside the project root.
 
 Usage: 
@@ -26,3 +32,16 @@ repositories{
 ```
 
 and use the dependency the usual way.
+
+version.gradle
+--------------
+
+A simple version strategy to calculate project semantic version number with [gradle-git](https://github.com/ajoberstar/gradle-git).
+
+If current commit is tagged and working directory is clean, the version is the tag.
+Otherwise the version is calculated as follows:
+
+* The normal part is the next patch version according to the last git tag. 
+* The pre-release is the branch name plus the distance from the last tag.
+* The metadata is the abbreviated commit id, eventually followed by ".uncommitted" if the working dir is not clean.
+
