@@ -25,8 +25,13 @@ class CustomStrategy implements VersionStrategy {
         NearestVersionLocator locator=new NearestVersionLocator()
         NearestVersion nearestVersion=locator.locate(grgit)
         String branch=grgit.branch.current.name
-        boolean clean = grgit.status().clean
-        new ReleaseVersion(version:  "${nearestVersion.normal.incrementPatchVersion()}-${branch}${nearestVersion.distanceFromAny>0?".$nearestVersion.distanceFromAny":''}+${grgit.head().id[0..5]}${clean?'':'.uncommitted'}")
+		int distance=nearestVersion.distanceFromAny
+		boolean clean = grgit.status().clean
+
+		if(clean && distance==0)
+			new ReleaseVersion(version: nearestVersion.normal)
+		else
+			new ReleaseVersion(version:  "${nearestVersion.normal.incrementPatchVersion()}-${branch}${distance>0?".$distance":''}+${grgit.head().id[0..5]}${clean?'':'.uncommitted'}")
     }
 
     public boolean	selector(Project project, Grgit grgit){
